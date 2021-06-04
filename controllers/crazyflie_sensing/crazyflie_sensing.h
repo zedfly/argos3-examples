@@ -112,6 +112,9 @@ private:
 
    /* Current step */
    uint m_uiCurrentStep;
+    
+   /* Initial Position */ 
+   CVector3 m_cInitialPosition;
 };
 
 #endif

@@ -60,24 +60,50 @@ void CCrazyflieSensing::Init(TConfigurationNode& t_node) {
 /****************************************/
 
 void CCrazyflieSensing::ControlStep() {
-   // Dummy behavior: takeoff for 10 steps, then land for 10 steps, repeat.
-   // While rotating on itself
+   // Dummy behavior: takeoff for 10 steps, 
+   // then moves in a square shape for 200 steps then lands.
 
-   // Rotate robot
-   m_pcPropellers->SetRelativeYaw(CRadians::PI_OVER_SIX);
-
-   // Takeoff/Land
-   if ( (m_uiCurrentStep / 10) % 2 == 0 ) {
+   int nInitSteps = 10;
+   int nTotalSteps = 400;
+   // Takeoff
+   if ( m_uiCurrentStep < nInitSteps ) {
       TakeOff();
-   } else {
-      Land();
+      m_cInitialPosition = m_pcPos->GetReading().Position;
+   } 
+   else if ((m_uiCurrentStep - nInitSteps) < nTotalSteps) {
+      // Square pattern
+      CVector3 trans(0.0f, 0.0f, 0.0f);
+      if ( (m_uiCurrentStep - nInitSteps) < nTotalSteps/4 ) {
+         trans.SetX(1.0f);
+      }
+      else if ( (m_uiCurrentStep - nInitSteps) < 2*nTotalSteps/4 ) {
+         trans.SetY(1.0f);
+      }
+      else if ( (m_uiCurrentStep - nInitSteps) < 3*nTotalSteps/4 ) {
+         trans.SetX(-1.0f);
+      }
+      else {
+         trans.SetY(-1.0f);
+      }
+      CVector3 currentPosition = m_pcPos->GetReading().Position;
+      CVector3 relativePositionCommand = (m_cInitialPosition + trans) - currentPosition; 
+      
+      m_pcPropellers->SetRelativePosition(relativePositionCommand);
    }
-   // Look battery level
+   else {
+      Land();
+   }   
+   // Print current position.
+   LOG << "Position (x,y,z) = (" << m_pcPos->GetReading().Position.GetX() << ","
+       << m_pcPos->GetReading().Position.GetY() << ","
+       << m_pcPos->GetReading().Position.GetZ() << ")" << std::endl; 
+
+   // Print current battery level
    const CCI_BatterySensor::SReading& sBatRead = m_pcBattery->GetReading();
    LOG << "Battery level: " << sBatRead.AvailableCharge  << std::endl;
 
    // Look here for documentation on the distance sensor: /root/argos3/src/plugins/robots/crazyflie/control_interface/ci_crazyflie_distance_scanner_sensor.h
-   // Read distance sensor
+   // Read and print distance sensor measurements
    CCI_CrazyflieDistanceScannerSensor::TReadingsMap sDistRead = 
       m_pcDistance->GetReadingsMap();
    auto iterDistRead = sDistRead.begin();
@@ -88,6 +114,7 @@ void CCrazyflieSensing::ControlStep() {
       LOG << "Right dist: " << (iterDistRead)->second  << std::endl;
    }
 
+   // Increase step counter
    m_uiCurrentStep++;
 }
 
